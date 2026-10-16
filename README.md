@@ -58,6 +58,7 @@ only fetch URLs from that list — users can never supply a fetch URL.
 | --- | --- | --- |
 | BBC World (RSS) | `rss` | ✅ verified reachable |
 | Al Jazeera English (RSS) | `rss` | ✅ verified reachable |
+| Khaleej Times (RSS) | `rss` | ✅ verified reachable |
 | The Guardian World (RSS) | `rss` | ✅ verified reachable |
 | UN News (RSS) | `rss` | ✅ verified reachable |
 | DW English (RDF / RSS 1.0) | `rss` | ✅ verified reachable |
