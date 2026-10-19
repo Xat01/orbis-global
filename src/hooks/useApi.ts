@@ -10,7 +10,7 @@ export interface ApiState<T> {
 }
 
 /** Small fetch hook with loading/error states and manual refetch. */
-export function useApi<T>(path: string): ApiState<T> {
+export function useApi<T>(path: string, enabled = true): ApiState<T> {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [settledKey, setSettledKey] = useState<string | null>(null);
@@ -21,6 +21,8 @@ export function useApi<T>(path: string): ApiState<T> {
   const requestKey = `${path}#${tick}`;
 
   useEffect(() => {
+    // Nothing is requested while disabled; `loading` stays false by derivation.
+    if (!enabled) return;
     active.current = true;
     const ctrl = new AbortController();
     fetch(path, { signal: ctrl.signal })
@@ -43,9 +45,9 @@ export function useApi<T>(path: string): ApiState<T> {
       active.current = false;
       ctrl.abort();
     };
-  }, [path, requestKey]);
+  }, [path, requestKey, enabled]);
 
-  const loading = settledKey !== requestKey;
+  const loading = enabled && settledKey !== requestKey;
   const refetch = useCallback(() => setTick((t) => t + 1), []);
   return { data, error, loading, refetch };
 }

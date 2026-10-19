@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu, MapPin, Search } from "lucide-react";
+import { Menu, MapPin, Moon, Search, Sun } from "lucide-react";
 import { usePreferences } from "@/components/providers/PreferencesProvider";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -19,9 +19,24 @@ interface OverviewMeta {
 
 export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const router = useRouter();
-  const { prefs, hydrated } = usePreferences();
+  const { prefs, hydrated, setTheme } = usePreferences();
   const [q, setQ] = useState("");
   const [meta, setMeta] = useState<OverviewMeta | null>(null);
+  // Mirrors what is actually applied to <html data-theme> so the icon is
+  // correct even when the preference is "system".
+  const [effectiveTheme, setEffectiveTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    const read = () =>
+      setEffectiveTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +87,26 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
       </form>
 
       <div className="ml-auto flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setTheme(effectiveTheme === "dark" ? "light" : "dark")}
+          className="rounded-md p-2 text-muted hover:bg-surface-2"
+          aria-label={
+            effectiveTheme === "dark" ? "Switch to light appearance" : "Switch to dark appearance"
+          }
+          aria-pressed={effectiveTheme === "dark"}
+          title={
+            effectiveTheme === "dark"
+              ? "Switch to light appearance"
+              : "Switch to dark appearance"
+          }
+        >
+          {effectiveTheme === "dark" ? (
+            <Sun className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <Moon className="h-4 w-4" aria-hidden="true" />
+          )}
+        </button>
         {meta?.fixtureMode ? (
           <Badge tone="amber" title="Data served from test fixtures (ORBIS_E2E=1)">TEST FIXTURE MODE</Badge>
         ) : null}

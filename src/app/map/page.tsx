@@ -1,4 +1,4 @@
-import { getEnv } from "@/lib/env";
+import { getEnv, isAisConfigured } from "@/lib/env";
 import { MapView } from "@/components/map/MapView";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +10,7 @@ export default function MapPage() {
     <MapView
       tileUrl={env.ORBIS_TILE_URL}
       tileAttribution={env.ORBIS_TILE_ATTRIBUTION}
+      aisConfigured={isAisConfigured(env)}
     />
   );
 }

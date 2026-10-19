@@ -152,6 +152,14 @@ export function EventDetailModal({
 
             {tab === "briefing" ? (
               <div className="pb-4">
+                {b.summary ? (
+                  <section className="mt-4 rounded-md border border-line bg-surface-2/50 p-3">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
+                      Summary
+                    </h4>
+                    <p className="mt-1.5 text-sm leading-relaxed text-ink">{b.summary}</p>
+                  </section>
+                ) : null}
                 <Section title="What happened?">{b.whatHappened}</Section>
                 <Section title="Where and when?">{b.whereWhen}</Section>
                 {mode !== "quick" ? (
@@ -174,6 +182,16 @@ export function EventDetailModal({
                 <Section title="What should be watched next?">
                   <Bullets items={b.watchNext} />
                 </Section>
+                {b.rules.length > 0 ? (
+                  <Section title="How this was assessed (rules applied)">
+                    <Bullets items={b.rules} />
+                    <p className="mt-1.5 text-[11px] italic text-muted">
+                      These are ORBIS&apos;s published decision rules (see Sources &amp;
+                      Methodology), applied mechanically to ingested metadata — not claims made
+                      by the sources.
+                    </p>
+                  </Section>
+                ) : null}
                 <Section title="Limitations">
                   <Bullets items={b.limitations} />
                 </Section>

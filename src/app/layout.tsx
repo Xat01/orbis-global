@@ -15,12 +15,23 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#171b19",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f5f6f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e1211" },
+  ],
 };
+
+// Applies the stored theme before first paint so there is no light/dark flash.
+// Mirrors PreferencesProvider: explicit "light"/"dark" wins, otherwise the OS
+// preference decides. Kept dependency-free and inlined on purpose.
+const THEME_BOOTSTRAP = `(function(){try{var k="orbis.prefs.v1";var raw=localStorage.getItem(k);var t=raw?JSON.parse(raw).theme:null;if(t!=="light"&&t!=="dark"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}document.documentElement.dataset.theme=t;}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
       <body>
         <a
           href="#main-content"

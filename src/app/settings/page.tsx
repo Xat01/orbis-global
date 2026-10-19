@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { BriefingMode, Region, Topic } from "@/lib/types";
+import type { BriefingMode, Region, ThemeMode, Topic } from "@/lib/types";
 import { REGIONS, TOPICS } from "@/lib/types";
 import { usePreferences } from "@/components/providers/PreferencesProvider";
 import { useApi } from "@/hooks/useApi";
@@ -14,6 +14,7 @@ export default function SettingsPage() {
   const {
     prefs,
     setBriefingMode,
+    setTheme,
     setTopics,
     setRegions,
     clearLocation,
@@ -59,6 +60,29 @@ export default function SettingsPage() {
           </Select>
           <p className="mt-1 text-[11px] text-muted">
             Briefing length never changes the certainty of the underlying facts.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Appearance</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Label htmlFor="theme-mode">Theme</Label>
+          <Select
+            id="theme-mode"
+            className="max-w-xs"
+            value={prefs.theme}
+            onChange={(e) => setTheme(e.target.value as ThemeMode)}
+          >
+            <option value="system">Match system</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </Select>
+          <p className="mt-1 text-[11px] text-muted">
+            Stored in this browser only. The toggle in the top bar switches light and dark
+            directly; &quot;Match system&quot; follows your operating system.
           </p>
         </CardContent>
       </Card>

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import type { BriefingMode, Region, Topic, UserPreferences } from "@/lib/types";
+import type { BriefingMode, Region, ThemeMode, Topic, UserPreferences } from "@/lib/types";
 import { UserPreferencesSchema } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -37,6 +37,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   topics: [],
   regions: [],
   briefingMode: "standard",
+  theme: "system",
   alerts: {
     enabled: true,
     regions: [],
@@ -56,6 +57,7 @@ interface PreferencesContextValue {
   setTopics: (topics: Topic[]) => void;
   setRegions: (regions: Region[]) => void;
   setBriefingMode: (mode: BriefingMode) => void;
+  setTheme: (mode: ThemeMode) => void;
   setAlertPrefs: (alerts: UserPreferences["alerts"]) => void;
   toggleSaved: (item: Omit<SavedItem, "savedAt">) => void;
   isSaved: (id: string) => boolean;
@@ -112,6 +114,22 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     writeJson(STORAGE_KEYS.prefs, next);
   }, []);
 
+  // Apply the theme to <html data-theme>. The inline bootstrap script in the
+  // root layout already set the correct value before paint; this keeps it in
+  // sync afterwards and follows the OS when the preference is "system".
+  useEffect(() => {
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      const effective =
+        prefs.theme === "system" ? (mql.matches ? "dark" : "light") : prefs.theme;
+      document.documentElement.dataset.theme = effective;
+    };
+    apply();
+    if (prefs.theme !== "system") return;
+    mql.addEventListener("change", apply);
+    return () => mql.removeEventListener("change", apply);
+  }, [prefs.theme]);
+
   const value = useMemo<PreferencesContextValue>(() => {
     return {
       prefs,
@@ -124,6 +142,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       setTopics: (topics) => persistPrefs({ ...prefs, topics }),
       setRegions: (regions) => persistPrefs({ ...prefs, regions }),
       setBriefingMode: (briefingMode) => persistPrefs({ ...prefs, briefingMode }),
+      setTheme: (theme) => persistPrefs({ ...prefs, theme }),
       setAlertPrefs: (alerts) => persistPrefs({ ...prefs, alerts }),
       toggleSaved: (item) => {
         setSaved((prev) => {

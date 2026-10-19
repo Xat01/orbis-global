@@ -5,6 +5,7 @@ import type {
   Event,
   EventUpdate,
 } from "@/lib/types";
+import { CRITICAL_THRESHOLD, NOTABLE_THRESHOLD } from "@/lib/ingest/significance";
 import { truncate } from "@/lib/util/text";
 import { relativeTime } from "@/lib/util/time";
 
@@ -118,6 +119,113 @@ const DEFAULT_NEXT = [
   "Watch for material updates that change the assessed status of this development.",
 ];
 
+/**
+ * The assessment rules that actually fired for this event, stated in plain
+ * language with their real thresholds. Rendered verbatim in the UI under
+ * "How this was assessed" so the reader can audit the logic.
+ */
+export function assessmentRules(event: Event, updates: EventUpdate[]): string[] {
+  const n = event.sourceIds.length;
+  const rules: string[] = [];
+
+  rules.push(
+    n >= 3
+      ? `Source-diversity rule: ${n} independent sources reported this (threshold 3) — details treated as corroborated.`
+      : n === 2
+        ? "Source-diversity rule: exactly 2 independent sources — corroborated, but wording may still change."
+        : "Source-diversity rule: single source — treated as provisional until independently confirmed.",
+  );
+  if (event.evidenceLabels.includes("conflicting-accounts")) {
+    rules.push(
+      "Conflict rule: headline wording diverges materially across sources — both framings are listed under “uncertain”, not “confirmed”.",
+    );
+  }
+  if (event.evidenceLabels.includes("corrected-or-retracted")) {
+    rules.push("Correction rule: at least one source issued a correction — earlier details are downgraded.");
+  }
+  if (event.evidenceLabels.includes("single-source")) {
+    rules.push("Uncertainty rule: no detail appears under “confirmed” unless a source directly states it.");
+  }
+
+  const { score, level } = event.significance;
+  rules.push(
+    level === "critical"
+      ? `Significance rule: score ${score} ≥ ${CRITICAL_THRESHOLD} → “critical”.`
+      : level === "notable"
+        ? `Significance rule: score ${score} ≥ ${NOTABLE_THRESHOLD} → “notable” (below the critical threshold of ${CRITICAL_THRESHOLD}).`
+        : `Significance rule: score ${score} < ${NOTABLE_THRESHOLD} → “routine”; most events are, deliberately.`,
+  );
+
+  rules.push(
+    event.primaryGeo.kind === "exact"
+      ? "Location rule: reporting gives a precise location — the map marker is the reported point."
+      : `Location rule: ${event.primaryGeo.kind}-level precision — map coordinates are an area centroid, not an incident point.`,
+  );
+
+  rules.push(
+    articlesRuleText(event),
+  );
+
+  if (updates.length > 0) {
+    rules.push(
+      `Currency rule: the last-updated time comes from the most recent of ${updates.length} recorded change${updates.length === 1 ? "" : "s"}; stale claims are re-timestamped only when a source updates them.`,
+    );
+  }
+  return rules;
+}
+
+function articlesRuleText(event: Event): string {
+  return `Evidence rule: only claims traceable to the ${event.sourceIds.length} listed source${event.sourceIds.length === 1 ? "" : "s"} appear in the confirmed list; full article text is not stored.`;
+}
+
+/**
+ * A readable multi-sentence narrative of the event, composed only from the
+ * structured fields ORBIS actually has. Length follows the briefing mode
+ * (quick = 2 sentences … detailed = full account).
+ */
+function buildSummary(input: {
+  event: Event;
+  articles: Article[];
+  mode: BriefingMode;
+  uncertain: string[];
+  watch: string[];
+}): string {
+  const { event, articles, mode, uncertain, watch } = input;
+  const n = event.sourceIds.length;
+
+  const sentences: string[] = [];
+  sentences.push(
+    `${truncate(event.title, 300)} — reported in connection with ${event.primaryGeo.name}, first seen ${relativeTime(event.firstSeenAt)}${
+      event.lastUpdatedAt !== event.firstSeenAt ? `, last updated ${relativeTime(event.lastUpdatedAt)}` : ""
+    }.`,
+  );
+  sentences.push(
+    `${n} independent source${n === 1 ? "" : "s"} across ${articles.length} article${articles.length === 1 ? "" : "s"} have reported this; ${
+      event.evidenceLabels.includes("single-source")
+        ? "it remains a single-source account, so details are provisional."
+        : "the core claim is corroborated across them."
+    }`,
+  );
+  const who = involvedActors(event, articles);
+  sentences.push(
+    who.startsWith("Entities named")
+      ? `${who} Assessed as ${event.significance.level} significance under ORBIS scoring criteria.`
+      : `Key actors are not clearly identified in the available reporting (assessed as ${event.significance.level} significance).`,
+  );
+  if (uncertain.length > 0) {
+    sentences.push(`Main caveat: ${truncate(uncertain[0], 260)}`);
+  } else {
+    sentences.push("No material caveats were recorded from the available metadata.");
+  }
+  sentences.push(
+    `What to watch: ${truncate(watch[0] ?? "independent corroboration and official responses.", 260)}`,
+  );
+
+  const limit =
+    mode === "quick" ? 2 : mode === "standard" ? Math.min(sentences.length, 4) : sentences.length;
+  return sentences.slice(0, limit).join(" ");
+}
+
 export function generateDeterministicBriefing(input: {
   event: Event;
   articles: Article[];
@@ -202,6 +310,8 @@ export function generateDeterministicBriefing(input: {
     mode,
     generatedAt: new Date().toISOString(),
     generator: "deterministic",
+    summary: buildSummary({ event, articles, mode, uncertain, watch }),
+    rules: assessmentRules(event, updates),
     whatHappened: truncate(event.title, 400),
     whereWhen: `${geoSentence(event)} ${timeSentence(event, articles)}`,
     whoIsInvolved: involvedActors(event, articles),

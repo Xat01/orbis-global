@@ -27,6 +27,7 @@ function prefs(overrides: Partial<UserPreferences["alerts"]> = {}): UserPreferen
     topics: [],
     regions: [],
     briefingMode: "standard",
+    theme: "system",
     alerts: {
       regions: [],
       topics: [],

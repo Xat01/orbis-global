@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { Event } from "@/lib/types";
 import { REGIONS, SIGNIFICANCE_LEVELS, TOPICS } from "@/lib/types";
+import type { Vessel, VesselMeta } from "@/lib/vessels/types";
 import { useApi } from "@/hooks/useApi";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -14,7 +15,7 @@ import { EventCard } from "@/components/domain/EventCard";
 import { EventDetailModal } from "@/components/domain/EventDetailModal";
 import { Spinner } from "@/components/ui/States";
 
-// Lazy: the map (and Leaflet) only download when this page is used.
+// Lazy: the map (and MapLibre GL) only download when this page is used.
 const WorldMap = dynamic(() => import("@/components/map/WorldMap"), {
   ssr: false,
   loading: () => (
@@ -28,15 +29,18 @@ export function MapView({
   tileUrl,
   tileAttribution,
   center,
+  aisConfigured = false,
 }: {
   tileUrl?: string;
   tileAttribution?: string;
   center?: [number, number];
+  aisConfigured?: boolean;
 }) {
   const [topic, setTopic] = useState("");
   const [region, setRegion] = useState("");
   const [level, setLevel] = useState("");
   const [hours, setHours] = useState("168");
+  const [showVessels, setShowVessels] = useState(true);
   const [openEventId, setOpenEventId] = useState<string | null>(null);
 
   const params = new URLSearchParams({ limit: "200" });
@@ -48,6 +52,29 @@ export function MapView({
   const { data, error, loading, refetch } = useApi<{ events: Event[]; total: number }>(
     `/api/events?${params.toString()}`,
   );
+
+  // Only collected while the layer is shown: each pass costs a WebSocket
+  // subscription, so ORBIS never polls AIS for a hidden layer.
+  const {
+    data: vesselData,
+    error: vesselError,
+    refetch: refetchVessels,
+  } = useApi<{ vessels: Vessel[]; meta: VesselMeta }>("/api/vessels?limit=2000", showVessels);
+
+  const vessels = useMemo(() => vesselData?.vessels ?? [], [vesselData]);
+  const vesselSource = vesselData?.meta.source;
+  const isDemoPositions = vesselSource === "demo" || vesselSource === "fixture";
+  const watchBoxes = useMemo(() => vesselData?.meta.boxes ?? [], [vesselData]);
+
+  // Re-poll while a collection pass is pending or the area is still empty;
+  // otherwise refresh once a minute. Demo/fixture positions are static, so
+  // they are fetched once and never polled.
+  useEffect(() => {
+    if (!showVessels || isDemoPositions) return;
+    const pending = (vesselData?.meta.refreshing ?? false) || vessels.length === 0;
+    const timer = setTimeout(refetchVessels, pending ? 12_000 : 60_000);
+    return () => clearTimeout(timer);
+  }, [showVessels, isDemoPositions, vesselData, vessels.length, refetchVessels]);
 
   const events = useMemo(() => data?.events ?? [], [data]);
   const mappable = useMemo(
@@ -110,6 +137,23 @@ export function MapView({
               <option value="">All retained data</option>
             </Select>
           </div>
+          <div className="flex flex-col justify-end gap-1">
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input
+                id="map-vessels"
+                type="checkbox"
+                className="h-4 w-4"
+                checked={showVessels}
+                onChange={(e) => setShowVessels(e.target.checked)}
+              />
+              Vessel layer (AIS)
+            </label>
+            <span className="text-[11px] text-muted">
+              {aisConfigured
+                ? "Live AIS from AISStream.io — delayed, incomplete or falsified at times; not a navigational aid."
+                : "No AISSTREAM_API_KEY set — showing clearly-labelled demo positions. Maritime reference marks (watch area, major straits) are always on."}
+            </span>
+          </div>
         </CardContent>
       </Card>
 
@@ -123,6 +167,9 @@ export function MapView({
               <WorldMap
                 events={mappable}
                 onSelect={(e) => setOpenEventId(e.id)}
+                vessels={vessels}
+                showVessels={showVessels}
+                watchBoxes={watchBoxes}
                 tileUrl={tileUrl}
                 tileAttribution={tileAttribution}
                 initialCenter={center}
@@ -133,6 +180,29 @@ export function MapView({
               {events.length - mappable.length > 0
                 ? `${events.length - mappable.length} event(s) have no reliable location and are listed only.`
                 : null}
+            </p>
+            {showVessels ? (
+              <p className="mt-1 text-[11px] text-muted">
+                {vesselError
+                  ? `Vessel layer unavailable (${vesselError}).`
+                  : isDemoPositions
+                    ? `${vessels.length} demo positions shown (sample data, not live AIS${
+                        vesselSource === "fixture" ? " — test fixture mode" : " — no API key configured"
+                      }).`
+                    : `${vessels.length} vessel${vessels.length === 1 ? "" : "s"} in the watch area${
+                        vesselData?.meta.refreshing
+                          ? " · updating…"
+                          : vesselData?.meta.stale
+                            ? " · positions may be stale"
+                            : ""
+                      }. AIS positions can be delayed, missing, or falsified; context only, not a navigational aid.`}
+              </p>
+            ) : null}
+            <p className="mt-1 text-[11px] text-muted">
+              Dashed outline: AIS watch area. Amber marks: major straits and canals — static
+              reference geography, never navigational data. Violet/orange vessel dots carry naval
+              badges (heuristic on public AIS, or your MMSI list) — military vessels often don&apos;t
+              broadcast AIS at all, so absence means nothing.
             </p>
           </div>
           <Card className="lg:col-span-1">

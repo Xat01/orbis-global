@@ -9,13 +9,19 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      // Next.js requires inline styles (and eval only in dev HMR). Leaflet
-      // injects inline styles for map panes.
+      // Next.js requires inline styles (and eval only in dev HMR). MapLibre
+      // injects inline styles for its own controls and layers.
       "style-src 'self' 'unsafe-inline'",
       `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      "connect-src 'self'",
+      // MapLibre loads style JSON, vector tiles and glyphs over fetch/XHR and
+      // runs its tile worker from a blob; raster tile providers load as images
+      // (covered by img-src https:). OpenFreeMap is the default keyless
+      // basemap. ORBIS_TILE_URL providers that need fetch access must be added
+      // here too.
+      "connect-src 'self' https://tiles.openfreemap.org",
+      "worker-src 'self' blob:",
       `frame-ancestors 'none'`,
       "base-uri 'self'",
       "form-action 'self'",

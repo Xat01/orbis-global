@@ -32,6 +32,28 @@ which enforces:
 6. **Timeouts and response-size caps** — bounded responses so a slow or hostile
    feed cannot exhaust memory.
 
+## AIS WebSocket egress (narrow exception)
+
+The optional live vessel layer connects to **one fixed host**,
+`wss://stream.aisstream.io/v0/stream`, defined as a constant in
+`src/lib/vessels/ais.ts`. This is a deliberate, auditable exception to the
+"one outbound fetch path" rule:
+
+1. The URL is a **compile-time constant** — no route, parameter, or UI control
+   can influence it, so it is not a general-purpose egress channel.
+2. The connection is **short-lived and bounded** (~15 s per collection pass) and
+   closes itself; there is no daemon or retry storm.
+3. Incoming messages are treated as **untrusted**: every field is decoded and
+   validated with zod (`src/lib/vessels/types.ts`) and malformed messages are
+   dropped rather than guessed at.
+4. The AIS key (`AISSTREAM_API_KEY`) is **server-side only** and never sent to
+   the browser. The HTTP API (`GET /api/vessels`) is rate-limited like every
+   other route and exposes positions as **context only** — the UI labels them
+   as potentially delayed, missing, or falsified, and as *not a navigational
+   aid*.
+
+See `tests/unit/vessels.test.ts`.
+
 ## XML parsing
 
 Feeds are parsed with `fast-xml-parser`. External entities are rejected by the
@@ -58,8 +80,8 @@ deterministic engine with an explicit status (`not-configured` / `failed`).
 
 ## Secrets
 
-- `AI_API_KEY` and `INGEST_TOKEN` are read **server-side only** and are never
-  sent to the browser or included in API responses.
+- `AI_API_KEY`, `INGEST_TOKEN` and `AISSTREAM_API_KEY` are read **server-side
+  only** and are never sent to the browser or included in API responses.
 - `.env*` files are git-ignored. Do not commit real credentials.
 - `.env.example` contains placeholders only.
 

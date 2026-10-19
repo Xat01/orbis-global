@@ -59,6 +59,11 @@ export const LOCATION_PRECISIONS = [
 export const LocationPrecisionSchema = z.enum(LOCATION_PRECISIONS);
 export type LocationPrecision = z.infer<typeof LocationPrecisionSchema>;
 
+// Appearance (browser-local). "system" follows the OS preference.
+export const THEME_MODES = ["system", "light", "dark"] as const;
+export const ThemeModeSchema = z.enum(THEME_MODES);
+export type ThemeMode = z.infer<typeof ThemeModeSchema>;
+
 export const GeoRefSchema = z.object({
   name: z.string(),
   kind: LocationPrecisionSchema,
@@ -206,6 +211,10 @@ export const BriefingSchema = z.object({
   mode: BriefingModeSchema,
   generatedAt: z.string().datetime({ offset: true }),
   generator: z.enum(["ai", "deterministic"]),
+  /** Multi-sentence narrative account assembled from the fields below. */
+  summary: z.string(),
+  /** The assessment rules that actually fired for this event, in plain language. */
+  rules: z.array(z.string()),
   whatHappened: z.string(),
   whereWhen: z.string(),
   whoIsInvolved: z.string(),
@@ -269,6 +278,9 @@ export const UserPreferencesSchema = z.object({
   topics: z.array(TopicSchema),
   regions: z.array(RegionSchema),
   briefingMode: BriefingModeSchema,
+  // Appearance is browser-local, like every other preference. "system" follows
+  // the OS setting and is the default when nothing has been stored yet.
+  theme: z.enum(THEME_MODES).default("system"),
   alerts: z.object({
     regions: z.array(RegionSchema),
     topics: z.array(TopicSchema),

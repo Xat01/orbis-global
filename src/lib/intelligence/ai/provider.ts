@@ -24,6 +24,8 @@ export interface AiClaim {
 }
 
 export const AiBriefingSchema = z.object({
+  /** One readable narrative paragraph; optional, falls back to the deterministic composition. */
+  summary: z.string().min(1).max(2500).optional(),
   whatHappened: z.string().min(1).max(1200),
   whereWhen: z.string().min(1).max(1200),
   whoIsInvolved: z.string().max(1200),
@@ -85,7 +87,10 @@ function buildUserPrompt(input: {
   const lines: string[] = [];
   lines.push("TASK: Produce a structured briefing as JSON with keys:");
   lines.push(
-    "whatHappened, whereWhen, whoIsInvolved, confirmed[{text,sourceIds}], uncertain[{text,sourceIds}], whyItMatters, whatCouldHappenNext[], affected, watchNext[], limitations[]",
+    "whatHappened, summary, whereWhen, whoIsInvolved, confirmed[{text,sourceIds}], uncertain[{text,sourceIds}], whyItMatters, whatCouldHappenNext[], affected, watchNext[], limitations[]",
+  );
+  lines.push(
+    "summary must be one plain-language narrative paragraph (3-5 sentences) reading as a coherent account of what happened, where, when, who, how certain it is, and what to watch — not a restatement of the headline.",
   );
   lines.push(`Briefing length: ${mode}.`);
   lines.push("");
@@ -260,6 +265,10 @@ export async function generateBriefing(input: {
     mode: input.mode,
     generatedAt: new Date().toISOString(),
     generator: "ai",
+    // Assessment rules always come from ORBIS's own published criteria — a
+    // model never gets to invent the methodology that audited it.
+    summary: ai.summary ?? deterministicBase.summary,
+    rules: deterministicBase.rules,
     whatHappened: ai.whatHappened,
     whereWhen: ai.whereWhen,
     whoIsInvolved: ai.whoIsInvolved,

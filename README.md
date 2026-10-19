@@ -45,9 +45,12 @@ Copy `.env.example` to `.env.local` and set only what you need:
 | --- | --- |
 | `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL` | Enable AI briefings via any OpenAI-compatible chat-completions endpoint. Server-side only. |
 | `INGEST_TOKEN` | Bearer token required by `POST /api/ingest`. If unset, the endpoint is disabled (403). |
-| `ORBIS_TILE_URL`, `ORBIS_TILE_ATTRIBUTION` | Custom map tile provider (defaults to OpenStreetMap). |
+| `ORBIS_TILE_URL`, `ORBIS_TILE_ATTRIBUTION` | Custom raster tile provider. When omitted the map uses OpenFreeMap vector basemaps (free, no key), which follow the light/dark theme. |
 | `ORBIS_RELIEFWEB_APPNAME` | Enables the ReliefWeb source (see below). |
 | `ORBIS_SOURCE_<ID>_DISABLED=1` | Disable an individual source by id. |
+| `AISSTREAM_API_KEY` | Enables the optional live vessel (AIS) layer on the World Map. Free key from <https://aisstream.io>; server-side only. Without a key the map shows the always-on maritime reference layer (watch area, major straits) plus clearly-labelled demo positions. |
+| `ORBIS_AIS_BOXES` | AIS watch area as JSON `[[south, west], [north, east]]` boxes. Defaults to the Gulf / Red Sea corridor. |
+| `ORBIS_AIS_NAVAL_MMSIS` | Optional comma-separated or JSON list of 9-digit MMSIs known to be naval hulls; listed vessels get a "listed" badge. Heuristic badges (ship-name prefixes such as HMS/USS) appear regardless — both are labelled unverified. |
 
 ## Data sources
 

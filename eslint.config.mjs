@@ -16,5 +16,7 @@ export default defineConfig([
     "playwright-report/**",
     "test-results/**",
     ".orbis-cache/**",
+    // Generated vendor worker (scripts/copy-maplibre-worker.mjs), not our source.
+    "public/maplibre-gl-worker.mjs",
   ]),
 ]);

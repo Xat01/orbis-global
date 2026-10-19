@@ -20,6 +20,35 @@
   --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
 }
 
+/* ---------------------------------------------------------------------------
+   Theme. The @theme block above defines the light palette; the dark palette
+   overrides the same custom properties on <html data-theme="dark">. Tailwind
+   utilities compile to var(--color-*), so overriding the variables is enough.
+   `color-scheme` keeps native controls (scrollbars, form widgets) in step.
+   --------------------------------------------------------------------------- */
+
+html {
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #0e1211;
+  --color-surface: #151a18;
+  --color-surface-2: #1c2321;
+  --color-line: #2a3230;
+  --color-charcoal: #0a0e0d;
+  --color-ink: #e6ebe8;
+  --color-muted: #93a09a;
+  --color-forest: #10241e;
+  --color-forest-2: #16443a;
+  --color-accent: #12a06d;
+  --color-accent-2: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #60a5fa;
+}
+
 html,
 body {
   height: 100%;
@@ -38,8 +67,28 @@ body {
   outline-offset: 2px;
 }
 
-/* Leaflet attribution must stay legible */
-.leaflet-control-attribution {
+/* MapLibre attribution must stay legible in both themes */
+.maplibregl-ctrl-attrib {
   font-size: 10px;
-  background: rgb(255 255 255 / 0.8);
+  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+  color: var(--color-muted);
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--color-muted);
+}
+
+/* Event tooltip on the map */
+.orbis-map-popup {
+  max-width: 280px;
+}
+.orbis-map-popup-title {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-ink);
+}
+.orbis-map-popup-meta {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--color-muted);
 }

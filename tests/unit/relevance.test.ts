@@ -13,6 +13,7 @@ function prefs(partial: Partial<UserPreferences> = {}): UserPreferences {
     topics: [],
     regions: [],
     briefingMode: "standard",
+    theme: "system",
     alerts: { regions: [], topics: [], minSignificance: "notable", enabled: true },
     ...partial,
   };
